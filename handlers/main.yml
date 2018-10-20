@@ -1,0 +1,6 @@
+---
+# handlers file for ntpdate_local
+- name: restart ntpd
+  service:
+    name: ntpd
+    state: restarted

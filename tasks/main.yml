@@ -1,0 +1,48 @@
+---
+# tasks file for ntpdate_local
+
+- name: Set roles for all node
+  set_fact:
+    role: >-
+      {%- if inventory_hostname == groups.masters[0] -%}
+        master
+      {%- else -%}
+        slave
+      {%- endif -%}
+
+- name: Ensure ntp package is installed
+  package:
+    name: ntp
+    state: present
+
+- name: Generate ntpd configuration
+  template:
+    src: ntp.conf.j2
+    dest: /etc/ntp.conf
+  notify: restart ntpd
+  when: role == "master"
+
+- name: Ensure ntpd is running and enabled
+  service:
+    name: ntpd
+    state: started
+    enabled: true
+  when: role == "master"
+
+- name: Ensure ntpd is stopped and disabled
+  service:
+    name: ntpd
+    state: stopped
+    enabled: false
+  when: role == "slave"
+
+- name: Ensure ntpdate package is installed
+  yum:
+    name: ntpdate
+    state: present
+
+- name: Set cron to sync time
+  cron:
+    name: cron_ntpdate
+    job: "/usr/sbin/ntpdate {{ groups.masters[0] }} 1 >/dev/null 2>&1"
+  when: role == "slave"
